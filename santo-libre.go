@@ -3,13 +3,14 @@ package libre
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os/exec"
 
 	"github.com/go-martini/martini"
 )
 
-func ExposeRoutes(m martini.Routes) func() (int, string) {
-	return func() (int, string) {
+func ExposeRoutes(m martini.Routes) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		md := routes_to_md(m)
 		err := ioutil.WriteFile("/tmp/santo-libre.md", []byte(md), 0644)
 		if err != nil {
@@ -21,7 +22,11 @@ func ExposeRoutes(m martini.Routes) func() (int, string) {
 		if err != nil {
 			panic(err)
 		}
-		return 200, string(out)
+		w.Header().Set("Content-Type", "text/html")
+		_, err = w.Write(out)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
