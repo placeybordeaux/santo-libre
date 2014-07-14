@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"sort"
 
 	"github.com/go-martini/martini"
 )
@@ -30,21 +31,28 @@ func ExposeRoutes(m martini.Routes) http.HandlerFunc {
 	}
 }
 
+type routesSorter []martini.Route
+
+func (rs routesSorter) Len() int {
+	return len(rs)
+}
+
+func (rs routesSorter) Swap(i, j int) {
+	rs[i], rs[j] = rs[j], rs[i]
+}
+
+func (rs routesSorter) Less(i, j int) bool {
+	return rs[i].Pattern() < rs[j].Pattern()
+}
+
 func routes_to_md(routes martini.Routes) string {
 	s := ""
 	s += "FORMAT: 1A\nHOST: http://made.up\n"
-	paths := make(map[string][]martini.Route)
-	for _, route := range routes.All() {
-		if _, ok := paths[route.Pattern()]; ok {
-			paths[route.Pattern()] = make([]martini.Route, 1)
-		}
-		paths[route.Pattern()] = append(paths[route.Pattern()], route)
-	}
-	for pattern, routes := range paths {
-		s += fmt.Sprintf("## Default Name [%s]\n", pattern)
-		for _, route := range routes {
-			s += fmt.Sprintf("\n### Default Name [%s]\n", route.Method())
-		}
+	rs := routes.All()
+	sort.Sort(routesSorter(rs))
+	for _, route := range rs {
+		s += fmt.Sprintf("## Default Name [%s]\n", route.Pattern())
+		s += fmt.Sprintf("\n### Default Name [%s]\n", route.Method())
 	}
 	return s
 }
