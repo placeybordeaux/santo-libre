@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/exec"
 	"sort"
+	"strings"
 
 	"github.com/go-martini/martini"
 )
@@ -50,9 +51,11 @@ func routes_to_md(routes martini.Routes) string {
 	s += "FORMAT: 1A\nHOST: http://made.up\n"
 	rs := routes.All()
 	sort.Sort(routesSorter(rs))
-	for _, route := range rs {
-		s += fmt.Sprintf("## Default Name [%s]\n", route.Pattern())
-		s += fmt.Sprintf("\n### Default Name [%s]\n", route.Method())
+	for i, route := range rs {
+		if i == 0 || strings.Split(rs[i].Pattern(), "/")[1] != strings.Split(rs[i-1].Pattern(), "/")[1] {
+			s += fmt.Sprintf("\n# group %s\n", strings.Split(route.Pattern(), "/")[1])
+		}
+		s += fmt.Sprintf("\n## %s %s\n", route.Method(), route.Pattern())
 	}
 	return s
 }
