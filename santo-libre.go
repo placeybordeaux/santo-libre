@@ -11,6 +11,28 @@ import (
 	"github.com/go-martini/martini"
 )
 
+var LastResponses map[string][]http.Response
+var LastRequests map[string][]http.Request
+
+func init() {
+	LastResponses = make(map[string][]http.Response)
+	LastRequests = make(map[string][]http.Request)
+}
+
+func RecordLastRequests(c martini.Context, r *http.Request, routes martini.Routes) {
+	LastRequests[r.URL.Path] = append(LastRequests[r.URL.Path], *r)
+}
+
+func ExposeRoutesMD(m martini.Routes) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		md := routes_to_md(m)
+		_, err := w.Write([]byte(md))
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func ExposeRoutes(m martini.Routes) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		md := routes_to_md(m)
@@ -56,6 +78,20 @@ func routes_to_md(routes martini.Routes) string {
 			s += fmt.Sprintf("\n# group %s\n", strings.Split(route.Pattern(), "/")[1])
 		}
 		s += fmt.Sprintf("\n## %s %s\n", route.Method(), route.Pattern())
+		reqs, ok := LastRequests[route.Pattern()]
+		if ok {
+			s += "+ <keyword> Payload\n\n"
+			s += "\t Body section\n\n"
+			for _, req := range reqs {
+				s += fmt.Sprintf("\t+ Headers\n\n")
+				for header, values := range req.Header {
+					for _, v := range values {
+						s += fmt.Sprintf("\t\t%s: %s\n", header, v)
+					}
+				}
+				s += "\n"
+			}
+		}
 	}
 	return s
 }
